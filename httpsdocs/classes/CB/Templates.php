@@ -9,10 +9,10 @@ class Templates
 {
     /**
      * return templates list
-     * @param  array $p
+     * @param  array $p optional parameters
      * @return json  response
      */
-    public function readAll($p)
+    public function readAll($p = array())
     {
         $p = $p; //dummy codacy assignment
         $rez = DM\Templates::readAllWithData();
