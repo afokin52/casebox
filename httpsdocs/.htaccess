@@ -10,6 +10,9 @@
     RewriteEngine on
     RewriteBase /
 
+    # redirect root to demosrc core
+    RewriteRule ^$ /demosrc/ [R=301,L]
+
     # allow access to robots file
     RewriteRule ^robots.txt$ - [NC,L]
 
@@ -57,7 +60,8 @@
     RewriteRule ^(.*)$ index.php?uri=$1 [L,QSA]
     # RewriteRule . /index.php [L]
 
-    #deny direct access to other files
+    #deny direct access to other files (except root)
+    RewriteCond %{REQUEST_URI} !^/?$
     RewriteCond %{REQUEST_URI} !^.+\.(js|php|css|ico|png|bmp|jpg|gif)$
     RewriteRule ^(.*)$ - [F,L]
 

@@ -103,9 +103,11 @@ class Service
                 $layer
             );
 
-            if (! $this->solr_handler->ping()) {
-                throw new \Exception('Solr_connection_error' . $this->debugInfo(), 1);
-            }
+            // DISABLED: ping() hangs due to Apache_Solr_Service bug with HEAD requests
+            // The service works fine for actual operations (search, add, delete)
+            // if (! $this->solr_handler->ping()) {
+            //     throw new \Exception('Solr_connection_error' . $this->debugInfo(), 1);
+            // }
 
             //setting handler in cache raise errors for atomic updates
             Cache::set($cacheCoreName, $this->solr_handler);

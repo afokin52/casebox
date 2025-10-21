@@ -94,6 +94,7 @@ class Session implements \SessionHandlerInterface
         $rez = '';
 
         $r = DM\Sessions::read($sessionId);
+
         if (!empty($r)) {
             $rez = $r['data'];
         }
@@ -125,12 +126,33 @@ class Session implements \SessionHandlerInterface
             );
         }
 
+        // Extract user_id from session data
+        // Session data is in PHP session format: key|serialized_value;key|serialized_value;...
+        // We need to parse this format to extract the user ID, since $_SESSION may be
+        // empty/modified by the time write() is called during shutdown
+        $userId = 0;
+
+        if (!empty($session_data)) {
+            // Find and extract user array data
+            // Format: ips|...; key|...; user|a:15:{s:2:"id";s:1:"1";...}
+            if (preg_match('/user\|(.+)$/s', $session_data, $matches)) {
+                $userSerialized = $matches[1];
+
+                // Unserialize the user array to get the ID
+                $user = @unserialize($userSerialized);
+
+                if (is_array($user) && isset($user['id'])) {
+                    $userId = (int)$user['id'];
+                }
+            }
+        }
+
         $rez = DM\Sessions::replace(
             array(
                 'id' => $session_id
                 ,'pid' => $this->previous_session_id
                 ,'lifetime' => $lifetime
-                ,'user_id' => isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 0
+                ,'user_id' => $userId
                 ,'data' => $session_data
             )
         );

@@ -66,8 +66,8 @@ class Sessions extends Base
     {
         DB\dbQuery(
             'INSERT INTO sessions
-            (id, pid, expires, user_id, data)
-            VALUES($1, $2, TIMESTAMPADD(SECOND, $3, CURRENT_TIMESTAMP), $4, $5)
+            (id, pid, expires, user_id, data, last_action)
+            VALUES($1, $2, TIMESTAMPADD(SECOND, $3, CURRENT_TIMESTAMP), $4, $5, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE
                 expires = TIMESTAMPADD(SECOND, $3, CURRENT_TIMESTAMP)
                 ,last_action = CURRENT_TIMESTAMP

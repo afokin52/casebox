@@ -14,7 +14,6 @@ class User
      */
     public static function login($login, $pass)
     {
-
         @list($login, $loginAs) = explode('/', $login);
 
         $rez = array('success' => false);
@@ -34,7 +33,6 @@ class User
             $_SESSION['ips'] = $ips;
             $key             = md5($ips.$login.$pass.time());
             $rez             = self::setAsLoged($userId, $key);
-
         } else {
             //check if login exists and add user id to session for logging
             $userId = DM\Users::getIdByName($login);
@@ -57,6 +55,7 @@ class User
         //     )
         // );
         // Log::add($logParams);
+
         return $rez;
     }
 
@@ -119,12 +118,6 @@ class User
             $_SESSION['user']['groups'] = $rez['user']['groups'];
 
             $_SESSION['user']['TSV_checked'] = true;
-
-            // CRITICAL FIX: Force session write immediately after login
-            // This prevents race condition with shutdown functions that access $_SESSION
-            // Without this, session data may be serialized empty/stale and written to DB
-            session_write_close();  // Force write NOW with current $_SESSION data
-            session_start();        // Reopen for current request to continue
         }
 
         return $rez;

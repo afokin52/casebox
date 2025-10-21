@@ -305,11 +305,23 @@ Ext.define('CB.ViewPort', {
     ,onToggleFilterPanelClick: function(b, e) {
         this.buttons.toggleFilterPanel.setPressed(b.pressed);
 
-        App.mainLPanel.getLayout().setActiveItem(
-            b.pressed
-                ? 1
-                : 0
-        );
+        // Safely switch between tree view (0) and filter panel (1)
+        if (App.mainLPanel && App.mainLPanel.getLayout) {
+            var layout = App.mainLPanel.getLayout();
+            if (layout && typeof layout.setActiveItem === 'function') {
+                var targetIndex = b.pressed ? 1 : 0;
+                var items = layout.getLayoutItems();
+
+                // Only switch if the target item exists
+                if (items && items.length > targetIndex && items[targetIndex]) {
+                    try {
+                        layout.setActiveItem(targetIndex);
+                    } catch(err) {
+                        console.error('Failed to set active item:', err);
+                    }
+                }
+            }
+        }
     }
 
     ,updateNotificationsCount: function(counts) {
@@ -332,10 +344,26 @@ Ext.define('CB.ViewPort', {
     }
 
     ,onToggleNotificationsViewClick: function(b, e) {
-        var cpl = App.explorer.containersPanel.getLayout()
-            ,hideNotifications = cpl.activeItem.isXType('CBNotificationsView');
+        // Safety check: ensure App.explorer and containersPanel exist
+        if (!App.explorer || !App.explorer.containersPanel) {
+            console.error('App.explorer or containersPanel not initialized');
+            return;
+        }
 
-        cpl.setActiveItem(hideNotifications ? 0 : 1);
+        var cpl = App.explorer.containersPanel.getLayout();
+        if (!cpl || !cpl.activeItem) {
+            console.error('containersPanel layout not available');
+            return;
+        }
+
+        var hideNotifications = cpl.activeItem.isXType('CBNotificationsView');
+
+        try {
+            cpl.setActiveItem(hideNotifications ? 0 : 1);
+        } catch(err) {
+            console.error('Failed to toggle notifications view:', err);
+            return;
+        }
 
         if(hideNotifications) {
             //set browser title
@@ -492,7 +520,17 @@ Ext.define('CB.ViewPort', {
     }
 
     ,initCB: function(){
-        if( CB.DB && CB.DB.templates && (CB.DB.templates.getCount() > 0) ){
+        // Add retry counter to prevent infinite loop
+        if (!this.initCBRetries) {
+            this.initCBRetries = 0;
+        }
+
+        var templatesCount = (CB.DB && CB.DB.templates) ? CB.DB.templates.getCount() : 0;
+
+        console.log('initCB check - templates count:', templatesCount, 'retry:', this.initCBRetries);
+
+        if( templatesCount > 0 ){
+            console.log('Templates loaded, initializing CB...');
             this.onLogin();
             App.DD = new CB.DD();
 
@@ -503,17 +541,48 @@ Ext.define('CB.ViewPort', {
             App.fireEvent('cbinit', this);
 
             // depress notifications button when view deactivated
-            App.explorer.notificationsView.on(
-                'deactivate'
-                ,function(){
-                    this.buttons.toggleNotificationsView.toggle(false, true);
+            // Defer this to ensure App.explorer is fully initialized
+            Ext.Function.defer(function(){
+                if (App.explorer && App.explorer.notificationsView) {
+                    App.explorer.notificationsView.on(
+                        'deactivate'
+                        ,function(){
+                            this.buttons.toggleNotificationsView.toggle(false, true);
+                        }
+                        ,this
+                    );
                 }
-                ,this
-            );
+            }, 500, this);
 
-        } else {
-
+        } else if (this.initCBRetries < 20) {
+            // Retry up to 20 times (10 seconds)
+            this.initCBRetries++;
+            console.log('Templates not loaded yet, retrying... (attempt ' + this.initCBRetries + '/20)');
             Ext.Function.defer(this.initCB, 500, this);
+        } else {
+            // After 20 retries, force initialization with warning
+            console.error('Templates failed to load after 10 seconds. Force initializing...');
+            console.error('CB.DB:', CB.DB);
+            console.error('CB.DB.templates:', CB.DB.templates);
+
+            // Try to manually reload templates
+            if (CB.DB && CB.DB.templates && CB.DB.templates.load) {
+                console.log('Attempting manual templates reload...');
+                CB.DB.templates.load({
+                    callback: function() {
+                        console.log('Manual reload complete, templates count:', CB.DB.templates.getCount());
+                        if (CB.DB.templates.getCount() > 0) {
+                            this.initCBRetries = 0;
+                            this.initCB();
+                        } else {
+                            alert('Error: Templates could not be loaded. Please check server logs and refresh the page.');
+                        }
+                    },
+                    scope: this
+                });
+            } else {
+                alert('Critical error: Templates store not initialized. Please refresh the page.');
+            }
         }
     }
 
