@@ -126,25 +126,26 @@ class Session implements \SessionHandlerInterface
             );
         }
 
-        // Extract user_id from session data
-        // Session data is in PHP session format: key|serialized_value;key|serialized_value;...
-        // We need to parse this format to extract the user ID, since $_SESSION may be
-        // empty/modified by the time write() is called during shutdown
+        // Extract user_id from session data using session_decode()
+        // This is more robust than regex parsing as it handles all PHP session formats
+        // and doesn't depend on key order or serialization details
         $userId = 0;
 
         if (!empty($session_data)) {
-            // Find and extract user array data
-            // Format: ips|...; key|...; user|a:15:{s:2:"id";s:1:"1";...}
-            if (preg_match('/user\|(.+)$/s', $session_data, $matches)) {
-                $userSerialized = $matches[1];
+            // Save current $_SESSION to restore it after decoding
+            $currentSession = $_SESSION;
 
-                // Unserialize the user array to get the ID
-                $user = @unserialize($userSerialized);
-
-                if (is_array($user) && isset($user['id'])) {
-                    $userId = (int)$user['id'];
+            // Decode the session data into $_SESSION
+            $_SESSION = array();
+            if (@session_decode($session_data)) {
+                // Successfully decoded - extract user_id
+                if (isset($_SESSION['user']['id'])) {
+                    $userId = (int)$_SESSION['user']['id'];
                 }
             }
+
+            // Restore original $_SESSION
+            $_SESSION = $currentSession;
         }
 
         $rez = DM\Sessions::replace(
