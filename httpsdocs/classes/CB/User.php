@@ -120,6 +120,11 @@ class User
 
             $_SESSION['user']['TSV_checked'] = true;
 
+            // CRITICAL FIX: Force session write immediately after login
+            // This prevents race condition with shutdown functions that access $_SESSION
+            // Without this, session data may be serialized empty/stale and written to DB
+            session_write_close();  // Force write NOW with current $_SESSION data
+            session_start();        // Reopen for current request to continue
         }
 
         return $rez;

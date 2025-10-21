@@ -130,7 +130,7 @@ class Session implements \SessionHandlerInterface
                 'id' => $session_id
                 ,'pid' => $this->previous_session_id
                 ,'lifetime' => $lifetime
-                ,'user_id' => '0'.@$_SESSION['user']['id']
+                ,'user_id' => isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 0
                 ,'data' => $session_data
             )
         );

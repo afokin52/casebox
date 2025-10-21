@@ -87,11 +87,14 @@ ini_set("session.gc_maxlifetime", $sessionLifetime);
 ini_set("session.gc_divisor", "100");
 ini_set("session.gc_probability", "1");
 
+// Extract domain from server_name config for proper cookie domain
+$cookieDomain = parse_url(Config::get('server_name'), PHP_URL_HOST) ?: $_SERVER['SERVER_NAME'];
+
 session_set_cookie_params(
     $sessionLifetime,
     '/' . $cfg['core_name'] . '/',
-    $_SERVER['SERVER_NAME'],
-    !empty($_SERVER['HTTPS']),
+    $cookieDomain,
+    !empty($_SERVER['HTTPS']) || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
     true
 );
 
